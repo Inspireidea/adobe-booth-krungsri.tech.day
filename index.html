@@ -266,7 +266,7 @@
   </div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbybFuhcPeuoAGeRBZT7nFOymBFZpg6LrUffXVHtL91VTuuqZjmCxsRCZpVCq-uLFZM-/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzQYwHzt23KmHmqNw2zZ58abC3yCJivx0xJpX8aqfeh1ckDEHzwSokRIZa-j1bKRr0T/exec';
 
     const form = document.getElementById('adobeForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -334,7 +334,7 @@
         }
 
         if (result.status === 'duplicate') {
-          errorMsg.textContent = 'ข้อมูลนี้เคยลงทะเบียนไปแล้ว ไม่สามารถส่งซ้ำได้ (This information has already been submitted.)';
+          errorMsg.textContent = 'You have already registered.';
           submitBtn.disabled = true;
           submitBtn.textContent = 'Submit';
           return;
