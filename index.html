@@ -266,7 +266,7 @@
   </div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxxxdkEMIDqs5_fGrRA5b5AbqHoB1cYul0au2BWV_3ym8EUtsPKa6EEwaePJ0DQ9ymI/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxZQ_zMevF_UlTPlVlyf3fU54brAnUyGpgqdenrQirhOqUdkQ2_In58CMizCJ9ZL4MD/exec';
 
     const form = document.getElementById('adobeForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -317,30 +317,45 @@
           industry: formData.get('industry')
         };
 
-        // หมายเหตุ: ไม่ใช้ mode: 'no-cors' แล้ว เพื่อให้อ่านผลตอบกลับจาก
-        // Apps Script ได้จริง (รวมถึงสถานะข้อมูลซ้ำ)
-        const response = await fetch(scriptURL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(data)
-        });
+        // ส่งข้อมูลไป Apps Script และอ่านผลตอบกลับ (ไม่ใช้ no-cors เพื่อให้รู้ผลจริง)
+        const sendOnce = async () => {
+          const response = await fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(data)
+          });
+          const rawText = await response.text();
+          try {
+            return JSON.parse(rawText);
+          } catch (parseErr) {
+            throw new Error('Server did not return JSON (HTTP ' + response.status + '). Check that the Web App access is set to "Anyone" and the latest version is deployed. Response starts with: ' + rawText.slice(0, 80));
+          }
+        };
 
-        const rawText = await response.text();
+        // ถ้าครั้งแรกล้มเหลว (เช่น คิวแน่น/เน็ตหลุด) ลองส่งใหม่อีก 1 ครั้ง
+        // ปลอดภัยเพราะสคริปต์เช็กซ้ำให้อยู่แล้ว จะไม่เกิดแถวซ้ำ
         let result;
+        let retried = false;
         try {
-          result = JSON.parse(rawText);
-        } catch (parseErr) {
-          throw new Error('Server did not return JSON (HTTP ' + response.status + '). Check that the Web App access is set to "Anyone" and the latest version is deployed. Response starts with: ' + rawText.slice(0, 80));
+          result = await sendOnce();
+          if (result.status === 'error') throw new Error(result.error || 'Unknown error');
+        } catch (firstErr) {
+          console.warn('First attempt failed, retrying once:', firstErr);
+          retried = true;
+          await new Promise(r => setTimeout(r, 2000));
+          result = await sendOnce();
         }
 
         if (result.status === 'duplicate') {
-          errorMsg.textContent = 'You have already registered.';
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Submit';
-          return;
-        }
-
-        if (result.status === 'error') {
+          // ถ้าเป็นผลหลังส่งซ้ำ แปลว่าครั้งแรกน่าจะบันทึกสำเร็จไปแล้วแต่ผลตอบกลับหาย
+          // จึงนับเป็นสำเร็จ ไม่แจ้งว่าซ้ำ
+          if (!retried) {
+            errorMsg.textContent = 'You have already registered.';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submit';
+            return;
+          }
+        } else if (result.status === 'error') {
           throw new Error(result.error || 'Unknown error');
         }
 
